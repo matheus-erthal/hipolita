@@ -40,7 +40,7 @@ export default function Home() {
   const handleSearchTerms = async () => {
     setLoading(true);
     try {
-      const resp = await fetch(`https://api.hipolita.me/get_datasets?tags_final=${searchTerms}`);
+      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/get_datasets?tags_final=${searchTerms}`);
       const data = await resp.json();
       setDatasets(JSON.parse(data)["data"]);
       setCurrentStep(1);
@@ -72,7 +72,7 @@ export default function Home() {
   const handleDatasetSelection = async (dataset : any) => {
     setLoading(true);
     try {
-      const resp = await fetch(`https://api.hipolita.me/select_dataset?selected_url=${encodeURI(dataset[2])}`);
+      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/select_dataset?selected_url=${encodeURI(dataset[2])}`);
       const data = await resp.json();
       setColumns(data);
       setCurrentDataset(dataset);
@@ -92,7 +92,7 @@ export default function Home() {
       return;
     }
     try {
-      const resp = await fetch(`https://api.hipolita.me/select_columns?selected_url=${encodeURI(currentDataset[2])}&dimension=${dimension}&metric=${metric}`);
+      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/select_columns?selected_url=${encodeURI(currentDataset[2])}&dimension=${dimension}&metric=${metric}`);
       const resultBlob = await resp.blob();
       const resultObjectURL = URL.createObjectURL(resultBlob);
       setResultImage(resultObjectURL);
