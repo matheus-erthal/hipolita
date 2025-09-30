@@ -8,7 +8,7 @@ authors = [
 ]
 license = "MIT"
 readme = "README.md"
-packages = [{ include = "hipolita", from = "src" }]
+packages = [{ include = "hipolita" }]
 
 [tool.poetry.dependencies]
 python = ">=3.9"
