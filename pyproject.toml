@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "hipolita"
+version = "0.1.0"
+description = "Este projeto é uma implementação do framework Hipólita"
+authors = [
+    "Matheus Erthal Amâncio da Silva <matheusamancio@id.uff.br>",
+    "Raissa dos Santos Barcellos <raissa.barcellos@ime.uerj.br>"
+]
+license = "MIT"
+readme = "README.md"
+packages = [{ include = "hipolita", from = "src" }]
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
