@@ -11,11 +11,11 @@ class DadosAbertosBR(Portal):
     
     BASE_API_PATH = "/dados/api/publico/conjuntos-dados"
 
-    def __init__(self, api_key: Optional[str] = None):
-        super().__init__()
+    def __init__(self, **config):
+        super().__init__(**config)
         # Inicializa o adaptador genérico apontando para a base
         self.adapter = ApiAdapter("https://dados.gov.br")
-        self.api_key = api_key
+        self.api_key = config.get("api_key")
 
     async def search(self, query: str) -> List[Dataset]:
         results = []

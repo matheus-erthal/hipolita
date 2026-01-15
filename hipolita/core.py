@@ -4,23 +4,48 @@ def package_name():
 
 import os
 from typing import Optional
+import asyncio
+from .types import PortalType, Dataset
+from .data_recovery.portals.portal_dados_abertos_br import DadosAbertosBR
+from .data_recovery.portals.portal_data_gov_us import PortalDataGovUS
 
 
 class Hipolita:
     """Núcleo da biblioteca Hipolita.
 
-    Requer uma `api_key` na inicialização ou a variável de ambiente
-    `HIPOLITA_API_KEY` deve estar definida.
+    A `api_key` é opcional na inicialização, mas pode ser necessária para alguns
+    portais (ex: Dados Abertos BR) durante a busca.
     """
 
-    def __init__(self, api_key: Optional[str] = None, *, default_base_url: Optional[str] = None, timeout: float = 30.0):
-        # Tenta usar o parâmetro, senão fallback para env var
-        key = api_key if api_key is not None else os.environ.get("HIPOLITA_API_KEY")
-        if key is None or (isinstance(key, str) and key.strip() == ""):
-            raise ValueError("api_key obrigatório: passe api_key para Hipolita(...) ou defina HIPOLITA_API_KEY no ambiente")
-        self.api_key = key
-        self.default_base_url = default_base_url
-        self.timeout = float(timeout)
+    def __init__(self):
+        pass
 
-    def __repr__(self) -> str:  # pragma: no cover - trivial
-        return f"Hipolita(api_key={'***' if self.api_key else None}, default_base_url={self.default_base_url}, timeout={self.timeout})"
+    async def search_data(self, query: str, portal: PortalType = PortalType.ALL, **auth_config) -> list[Dataset]:
+        """
+        Busca dados em portais governamentais.
+        
+        Args:
+            query: Termo de busca.
+            portal: Portal específico ou PortalType.ALL para todos.
+            **auth_config: Credenciais extras (ex: api_key para Portal BR).
+        """
+        portals_to_search = []
+        
+        if portal == PortalType.DADOS_GOV_BR or portal == PortalType.ALL:
+            portals_to_search.append(DadosAbertosBR(**auth_config))
+            
+        if portal == PortalType.DATA_GOV_US or portal == PortalType.ALL:
+            portals_to_search.append(PortalDataGovUS(**auth_config))
+            
+        results = []
+        tasks = [p.search(query) for p in portals_to_search]
+        search_results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        for res in search_results:
+            if isinstance(res, list):
+                results.extend(res)
+            else:
+                # Logar erro se necessario
+                print(f"Erro na busca: {res}")
+                
+        return results

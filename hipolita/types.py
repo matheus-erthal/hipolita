@@ -34,3 +34,11 @@ class Dataset:
     spatial_coverage: str | None = None
     temporal_coverage: str | None = None
     source_portal: str | None = None
+
+
+from enum import Enum, auto
+
+class PortalType(Enum):
+    ALL = "all"
+    DADOS_GOV_BR = "dados_gov_br"
+    DATA_GOV_US = "data_gov_us"
