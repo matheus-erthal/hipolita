@@ -18,7 +18,7 @@ class PortalDataGovUS(Portal):
         async with self.adapter as ad:
             # Data.gov as vezes tem redirects ou validações chatas, mas é CKAN standard
             if not await ad.connect():
-                print("Não foi possível conectar ao data.gov")
+                print("Could not connect to data.gov")
                 return []
 
             raw_packages = await ad.search_packages(query)

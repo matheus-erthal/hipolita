@@ -14,7 +14,7 @@ class CkanAdapter(DataAdapter):
         Testa conexão verificando a disponibilidade da API.
         """
         if not self.session:
-            raise RuntimeError("Adapter needs to be used within 'async with' context or session manually created")
+            raise RuntimeError("Adapter needs to be used within an 'async with' context or the session must be created manually")
         
         try:
             url = f"{self.base_url}/api/3/action/package_search"
@@ -42,7 +42,7 @@ class CkanAdapter(DataAdapter):
 
     async def get_package(self, package_id: str) -> Optional[Dict[str, Any]]:
         if not self.session:
-            raise RuntimeError("Session not initialized")
+            raise RuntimeError("Sessão não inicializada")
 
         url = f"{self.base_url}/api/3/action/package_show"
         params = {"id": package_id}
@@ -56,7 +56,7 @@ class CkanAdapter(DataAdapter):
 
     async def fetch_resource(self, resource_url: str) -> pd.DataFrame:
         if not self.session:
-             raise RuntimeError("Session not initialized")
+             raise RuntimeError("Sessão não inicializada")
              
         async with self.session.get(resource_url) as response:
             if response.status != 200:

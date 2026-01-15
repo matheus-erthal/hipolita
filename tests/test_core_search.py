@@ -1,14 +1,10 @@
 import pytest
 from aioresponses import aioresponses
-from hipolita.core import Hipolita, PortalType
-
-@pytest.fixture
-def hipolita_instance():
-    return Hipolita()
+from hipolita import search_data, search_data_async, PortalType
 
 @pytest.mark.asyncio
-async def test_search_all_aggregates_results(hipolita_instance):
-    """Testa se busca 'ALL' agrega resultados de ambos os portais."""
+async def test_search_all_aggregates_results_async():
+    """Testa se busca 'ALL' agrega resultados de ambos os portais via função assíncrona."""
     
     # Mock BR response
     mock_br_resp = {
@@ -26,22 +22,18 @@ async def test_search_all_aggregates_results(hipolita_instance):
         m.get("https://catalog.data.gov/api/3/action/package_search?rows=0", status=200) # US Connect
         
         # Searches
-        # BR Endpoint
         m.get("https://dados.gov.br/dados/api/publico/conjuntos-dados?isPrivado=false&nomeConjuntoDados=test&pagina=1&registrosPorPagina=10", payload=mock_br_resp)
-        # US Endpoint
         m.get("https://catalog.data.gov/api/3/action/package_search?q=test&rows=10", payload=mock_us_resp)
         
-        # Passando api_key no auth_config
-        results = await hipolita_instance.search_data("test", PortalType.ALL, api_key="TEST_KEY")
+        results = await search_data_async("test", PortalType.ALL, api_key="TEST_KEY")
         
         assert len(results) == 2
         titles = [d.title for d in results]
         assert "BR Dataset" in titles
         assert "US Dataset" in titles
 
-@pytest.mark.asyncio
-async def test_search_specific_portal(hipolita_instance):
-    """Testa filtro por portal específico."""
+def test_search_sync_wrapper():
+    """Testa o wrapper síncrono search_data."""
     
     mock_us_resp = {
         "success": True,
@@ -50,24 +42,61 @@ async def test_search_specific_portal(hipolita_instance):
     
     with aioresponses() as m:
          m.get("https://catalog.data.gov/api/3/action/package_search?rows=0", status=200)
-         m.get("https://catalog.data.gov/api/3/action/package_search?q=test_us&rows=10", payload=mock_us_resp)
+         m.get("https://catalog.data.gov/api/3/action/package_search?q=sync_test&rows=10", payload=mock_us_resp)
          
-         results = await hipolita_instance.search_data("test_us", PortalType.DATA_GOV_US)
+         # search_data (sync) utiliza asyncio.run internamente
+         results = search_data("sync_test", PortalType.DATA_GOV_US)
          assert len(results) == 1
-         assert results[0].source_portal == "data.gov"
+         assert results[0].title == "US Dataset"
 
 @pytest.mark.asyncio
-async def test_pass_auth_config():
-    """Testa passagem de credenciais específicas."""
-    hipolita = Hipolita() 
-    
-    # Mas passa chave no metodo (para BR)
+async def test_pass_auth_config_async():
+    """Testa passagem de credenciais na função async."""
     mock_br_resp = {"conjuntosDados": []}
     
     with aioresponses() as m:
         m.get("https://dados.gov.br/", status=200)
         m.get("https://dados.gov.br/dados/api/publico/conjuntos-dados?isPrivado=false&nomeConjuntoDados=authtest&pagina=1&registrosPorPagina=10", payload=mock_br_resp)
         
-        # Testando api_key_br especificamente
-        await hipolita.search_data("authtest", PortalType.DADOS_GOV_BR, api_key_br="MY_SPECIAL_KEY")
+        await search_data_async("authtest", PortalType.DADOS_GOV_BR, api_key="MY_KEY")
+
+def test_search_invalid_portal():
+    """Testa se busca com portal inválido levanta ValueError."""
+    with pytest.raises(ValueError) as excinfo:
+        search_data("query", portal="portal_inexistente")
+    assert "Invalid portal" in str(excinfo.value)
+
+def test_search_by_string_key():
+    """Testa se busca funciona passando portal como string."""
+    mock_us_resp = {
+        "success": True,
+        "result": {"results": [{"id": "us1", "title": "US Dataset"}]}
+    }
+    with aioresponses() as m:
+        m.get("https://catalog.data.gov/api/3/action/package_search?rows=0", status=200)
+        m.get("https://catalog.data.gov/api/3/action/package_search?q=test&rows=10", payload=mock_us_resp)
+        
+        # Passando portal como string 'data_gov_us'
+        results = search_data("test", portal="data_gov_us")
+        assert len(results) == 1
+        assert results[0].title == "US Dataset"
+
+def test_search_br_without_key_raises_error():
+    """Testa se busca no portal BR sem carregar api_key levanta ValueError."""
+    with pytest.raises(ValueError) as excinfo:
+        search_data("educação", portal="dados_gov_br")
+    assert "requires an 'api_key'" in str(excinfo.value)
+
+def test_search_fails_silently_on():
+    """Testa se com fails_silently=True não levanta erro mesmo sem chave BR."""
+    # Não deve levantar erro
+    results = search_data("educação", portal="dados_gov_br", fails_silently=True)
+    assert results == []
+
+def test_search_fails_silently_off():
+    """Testa se mantém comportamento de raise quando fails_silently=False (default)."""
+    with pytest.raises(ValueError):
+        search_data("educação", portal="dados_gov_br", fails_silently=False)
+
+
 

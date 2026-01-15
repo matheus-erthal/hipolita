@@ -1,74 +1,131 @@
-# Hipólita
+# Hipolita
 
 [![Build](https://github.com/matheus-erthal/hipolita/actions/workflows/python-package.yml/badge.svg)](https://github.com/matheus-erthal/hipolita/actions/workflows/python-package.yml)
 [![PyPI](https://img.shields.io/pypi/v/hipolita?color=blue)](https://pypi.org/project/hipolita/)
 [![License](https://img.shields.io/pypi/l/hipolita)](https://opensource.org/licenses/MIT)
 
-## Descrição
+## Description
 
-Este projeto é uma implementação do framework **Hipólita**, proposto inicialmente em [_Hippolyta: a framework to enhance open data interpretability and empower citizens_](https://dl.acm.org/doi/10.1145/3598469.3598559).
+This project is an implementation of the **Hipolita** framework, originally proposed in [_Hippolyta: a framework to enhance open data interpretability and empower citizens_](https://dl.acm.org/doi/10.1145/3598469.3598559).
 
-O Hipólita foi projetado para facilitar o acesso e interpretação de dados abertos governamentais, fornecendo módulos especializados para enriquecer, recuperar e visualizar informações.
-
----
-
-## Módulos do Hipólita
-
-### 1. Módulo de Enriquecimento Semântico
-
-Este módulo utiliza **Processamento de Linguagem Natural (PLN)**, por meio do processo de **Part-of-Speech (POS) Tagging**, para ressaltar os conceitos mais importantes das solicitações dos usuários.
-
-### 2. Módulo de Recuperação da Informação
-
-Este módulo faz conexão com diversas **bases de dados governamentais** para recuperar as informações, utilizando diferentes estratégias e implementações de conectores.
-
-#### Portais Suportados
-
-- **Brasil**: [Portal Brasileiro de Dados Abertos](https://dados.gov.br/) (dados.gov.br)
-  - Integração via API específica do portal.
-  - **Requerimento**: Chave de API (`chave-api-dados-abertos`) para autenticação.
-  
-- **Estados Unidos**: [Data.gov](https://data.gov/)
-  - Integração via padrão CKAN.
-  - Acesso público.
-
-### 3. Módulo de Visualização de Dados
-
-Este módulo apresenta os dados obtidos pelo **Módulo de Recuperação da Informação**, formatados dentro da visualização definida pelo tipo e formato de dados retornados.
+Hipolita was designed to facilitate access and interpretation of governmental open data, providing specialized modules for enriching, recovering, and visualizing information.
 
 ---
 
-## Instalação
+## Hipolita Modules
 
-Você pode instalar a versão mais recente do Hipólita diretamente do **PyPI**:
+### 1. Semantic Enrichment Module
+
+This module uses **Natural Language Processing (NLP)**, through **Part-of-Speech (POS) Tagging**, to highlight the most important concepts from user requests.
+
+### 2. Information Retrieval Module
+
+This module connects to various **government databases** to retrieve information, using different connector strategies and implementations.
+
+#### Supported Portals
+
+| Portal | Country | URL | Key | Authentication |
+| :--- | :--- | :--- | :--- | :--- |
+| **Brazilian Open Data Portal** | Brazil 🇧🇷 | [dados.gov.br](https://dados.gov.br) | `dados_gov_br` | Requires `api_key` |
+| **Data.gov** | USA 🇺🇸 | [data.gov](https://data.gov) | `data_gov_us` | Public Access |
+
+### 3. Data Visualization Module
+
+This module presents the data obtained by the **Information Retrieval Module**, formatted according to the visualization rules defined by the data type and format.
+
+---
+
+## Installation
+
+You can install the latest version of Hipolita directly from **PyPI**:
 
 ```bash
 pip install hipolita
 ```
 
-## Desenvolvimento e Testes
+---
 
-Para contribuir ou testar o projeto localmente:
+## How to Use
 
-### Pré-requisitos
-- Python 3.10 ou superior
-- [Poetry](https://python-poetry.org/) (Gerenciador de dependências)
+Hipolita provide a simplified interface for searching data in government portals.
 
-### Configuração
-Clone o repositório e instale as dependências:
+### Basic Example (Synchronous Search)
+
+By default, the `search_data` function is synchronous and blocks execution until the search is complete.
+
+```python
+from hipolita import search_data
+
+# Direct synchronous search
+datasets = search_data("health", api_key="YOUR_BR_API_KEY")
+```
+
+### Error Control (`fails_silently`)
+
+You can use the `fails_silently=True` parameter to prevent exceptions from interrupting your code (useful in loops or automation scripts).
+
+```python
+# If the key is wrong or the portal is offline, just log and return []
+datasets = search_data(
+    "health", 
+    portal="dados_gov_br", 
+    fails_silently=True
+)
+```
+
+### Async Example (asyncio)
+
+For applications using `asyncio`, use the `search_data_async` function.
+
+```python
+import asyncio
+from hipolita import search_data_async, PortalType
+
+async def main():
+    # Asynchronous search
+    datasets = await search_data_async("education", portal=PortalType.ALL, api_key="...")
+    print(f"Found {len(datasets)} datasets.")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Searching in a Specific Portal
+
+You can filter the search using the `PortalType` enum.
+
+```python
+from hipolita import search_data, PortalType
+
+# Search only in the US portal (Data.gov)
+results = search_data("climate", portal=PortalType.DATA_GOV_US)
+```
+
+---
+
+## Development and Testing
+
+To contribute or test the project locally:
+
+### Prerequisites
+- Python 3.10 or higher
+- [Poetry](https://python-poetry.org/) (Dependency manager)
+
+### Setup
+Clone the repository and install dependencies:
 
 ```bash
 poetry install
 ```
 
-### Executando Testes
-O projeto possui testes automatizados para verificar a conectividade e mapeamento dos adaptadores de dados. Para executá-los:
+### Running Tests
+The project has automated tests to verify connectivity and adapter mapping. To run them:
 
 ```bash
 poetry run pytest
 ```
 
-Isso executará a suíte de testes em `tests/`, cobrindo:
-- Conexão com Mock de APIs.
-- Parsing de resposta.
-- Mapeamento de objetos JSON para `Dataset`.
+This will run the test suite in `tests/`, covering:
+- Connection with API mocks.
+- Response parsing.
+- JSON-to-`Dataset` mapping.

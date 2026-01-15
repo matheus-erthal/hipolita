@@ -18,6 +18,9 @@ class DadosAbertosBR(Portal):
         self.api_key = config.get("api_key")
 
     async def search(self, query: str) -> List[Dataset]:
+        if not self.api_key:
+            raise ValueError("The Dados Abertos BR portal requires an 'api_key' for searching.")
+            
         results = []
         async with self.adapter as ad:
             # Check de conexão genérico ou específico?
