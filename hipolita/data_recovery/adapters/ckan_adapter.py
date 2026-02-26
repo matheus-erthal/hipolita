@@ -57,17 +57,33 @@ class CkanAdapter(DataAdapter):
     async def fetch_resource(self, resource_url: str) -> pd.DataFrame:
         if not self.session:
              raise RuntimeError("Sessão não inicializada")
-             
+
         async with self.session.get(resource_url) as response:
             if response.status != 200:
                 raise Exception(f"Failed to download resource: {response.status}")
-            
+
             content = await response.read()
-            try:
-                # Assume CSV primeiro
-                return pd.read_csv(io.BytesIO(content))
-            except:
+            content_type = response.content_type or ""
+            url_lower = resource_url.lower()
+
+            if "json" in content_type or url_lower.endswith(".json"):
                 try:
-                    return pd.read_excel(io.BytesIO(content))
-                except:
-                    return pd.DataFrame()
+                    return pd.read_json(io.BytesIO(content))
+                except Exception:
+                    pass
+
+            if "tab-separated" in content_type or url_lower.endswith(".tsv"):
+                try:
+                    return pd.read_csv(io.BytesIO(content), sep='\t')
+                except Exception:
+                    pass
+
+            try:
+                return pd.read_csv(io.BytesIO(content))
+            except Exception:
+                pass
+
+            try:
+                return pd.read_excel(io.BytesIO(content))
+            except Exception:
+                return pd.DataFrame()

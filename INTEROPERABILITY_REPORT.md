@@ -350,6 +350,54 @@ A recomendação central é que governos tratem suas APIs de dados abertos como 
 
 ---
 
+## 14. Limitações e Ameaças à Validade
+
+Esta seção documenta as limitações metodológicas e técnicas deste trabalho, relevantes para avaliar a generalização dos resultados em contexto científico.
+
+### 14.1 Limitações da Amostra
+
+- **Tamanho:** 14 países constituem uma amostra limitada frente aos 193 estados membros da ONU. Portais subnacionais (estaduais, municipais) não foram considerados.
+- **Critério de seleção:** Os países foram selecionados por conveniência e disponibilidade, não por um critério sistemático (e.g., índice ODIN de maturidade de dados abertos, PIB, região geográfica). Isso introduz potencial viés de seleção.
+- **Cobertura geográfica:** A amostra concentra-se na Europa (7 países) e Ásia (4), com representação limitada da África (0), América Latina (1) e Oceania (1).
+
+### 14.2 Limitações Temporais
+
+- **Snapshot único:** Todas as análises de API foram realizadas em um único período (Fevereiro de 2026). Não há análise longitudinal de disponibilidade, estabilidade ou evolução dos endpoints.
+- **Volatilidade de APIs:** APIs governamentais podem ser alteradas, desativadas ou migradas sem aviso prévio. Os resultados refletem o estado dos portais no momento da análise e podem se tornar desatualizados.
+- **Ausência de métricas temporais:** Não foram coletadas métricas de tempo de resposta, uptime, taxa de erro ou throughput. A análise é puramente funcional (funciona/não funciona), sem dimensão quantitativa de desempenho.
+
+### 14.3 Limitações Técnicas
+
+- **Testes mock-only:** Os 51 testes automatizados utilizam respostas HTTP mockadas (`aioresponses`). Eles validam a lógica de mapeamento e parsing do código, mas **não validam interoperabilidade real** com os portais. Testes de integração real (incluídos no repositório) devem ser executados separadamente para validar os endpoints.
+- **Descoberta ad-hoc de endpoints:** A metodologia de "descoberta de API" consistiu em tentativa e erro com padrões conhecidos (CKAN, DCAT-AP, REST), análise de documentação disponível e inspeção de tráfego de rede. Não há garantia de que todos os endpoints disponíveis foram encontrados — especialmente para portais sem documentação (Chipre, Rússia, Áustria).
+- **Busca textual limitada:** O portal espanhol (`datos.gob.es`) não suporta busca textual via API — a função `search()` retorna datasets recentes independentemente do termo de busca. Isso compromete a comparabilidade direta com outros portais.
+- **Paginação inconsistente:** O framework busca apenas a primeira página de resultados de cada portal. Não foi analisada a implementação completa de paginação cross-portal.
+- **Localização geográfica única:** Todas as requisições foram feitas de uma única localização. Latência, disponibilidade e geo-restrições podem variar conforme a origem da requisição.
+
+### 14.4 Limitações de Análise
+
+- **Sem análise DCAT-AP:** O relatório menciona o padrão DCAT-AP (Data Catalog Vocabulary - Application Profile) mas não analisa sistematicamente se os portais expõem endpoints DCAT ou SPARQL, que poderiam oferecer uma camada adicional de interoperabilidade.
+- **Sem análise de qualidade de dados:** O foco é no acesso programático (API), não na qualidade dos dados retornados (completude de metadados, atualidade, acurácia, formato dos arquivos).
+- **Sem análise de licenciamento comparativo:** Embora licenças sejam mencionadas como campo de metadados, não há análise comparativa das políticas de licenciamento entre portais.
+- **Modelo unificado simplificado:** O modelo `Dataset`/`Resource` utilizado é deliberadamente genérico. Campos específicos de cada portal que não mapeiam para o modelo unificado são descartados, resultando em perda de informação.
+
+### 14.5 Ameaças à Reprodutibilidade
+
+- **Autenticação do portal brasileiro:** O portal `dados.gov.br` requer uma chave de API (`api_key`) para todas as operações, incluindo leitura. Pesquisadores que desejem reproduzir os resultados precisarão obter sua própria chave via cadastro no portal.
+- **Dependências de versão:** O `pyproject.toml` utiliza ranges de versão (e.g., `pandas ^2.0.0`) em vez de versões exatas. Comportamentos podem variar com atualizações de dependências.
+- **Mudanças de infraestrutura dos portais:** Vários portais analisados (Áustria, Taiwan) demonstraram migração recente de plataforma. Portais atualmente funcionais podem migrar no futuro, invalidando integrações existentes.
+
+### 14.6 Recomendações para Trabalhos Futuros
+
+Para mitigar as limitações acima em trabalhos futuros:
+1. **Ampliar amostra:** Utilizar critério sistemático de seleção (e.g., países do Open Government Partnership, top-50 do ODIN ranking).
+2. **Análise longitudinal:** Monitorar endpoints periodicamente (e.g., semanal/mensal) para capturar métricas de disponibilidade e estabilidade.
+3. **Métricas quantitativas:** Coletar tempo de resposta, completude de metadados (% de campos preenchidos), e conformidade DCAT-AP.
+4. **Testes distribuídos:** Executar testes de múltiplas localizações geográficas para detectar geo-restrições.
+5. **Análise de qualidade:** Avaliar a qualidade dos dados retornados (não apenas da API), incluindo formato, encoding, e integridade dos arquivos de recurso.
+
+---
+
 ## Apêndice A — Endpoints Testados por Portal
 
 ### Chipre (data.gov.cy)

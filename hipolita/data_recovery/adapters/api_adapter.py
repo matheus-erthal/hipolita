@@ -29,15 +29,39 @@ class ApiAdapter(DataAdapter):
     async def fetch_resource(self, resource_url: str) -> pd.DataFrame:
         if not self.session:
              raise RuntimeError("Session not initialized")
-        
+
         async with self.session.get(resource_url) as response:
-            if response.status == 200:
-                content = await response.read()
+            if response.status != 200:
+                return pd.DataFrame()
+
+            content = await response.read()
+            content_type = response.content_type or ""
+            url_lower = resource_url.lower()
+
+            if "json" in content_type or url_lower.endswith(".json"):
                 try:
-                    return pd.read_csv(io.BytesIO(content), sep=';') 
-                except:
-                     try:
-                        return pd.read_csv(io.BytesIO(content))
-                     except:
-                        return pd.DataFrame()
+                    return pd.read_json(io.BytesIO(content))
+                except Exception:
+                    pass
+
+            if "tab-separated" in content_type or url_lower.endswith(".tsv"):
+                try:
+                    return pd.read_csv(io.BytesIO(content), sep='\t')
+                except Exception:
+                    pass
+
+            try:
+                return pd.read_csv(io.BytesIO(content), sep=';')
+            except Exception:
+                pass
+            try:
+                return pd.read_csv(io.BytesIO(content))
+            except Exception:
+                pass
+
+            try:
+                return pd.read_excel(io.BytesIO(content))
+            except Exception:
+                pass
+
         return pd.DataFrame()

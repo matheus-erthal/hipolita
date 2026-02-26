@@ -657,3 +657,139 @@ async def test_get_dataset_india():
         assert ds is not None
         assert ds.title == "India Catalog"
         assert ds.source_portal == "data.gov.in"
+
+
+# ==========================================
+# Tests for fetch_dataset_data()
+# ==========================================
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_data_with_csv():
+    """Testa fetch_dataset_data com recurso CSV disponível."""
+    portal = PortalDataGovUS()
+
+    mock_pkg_resp = {
+        "success": True,
+        "result": {
+            "id": "us1",
+            "title": "US CSV Dataset",
+            "organization": {"title": "US Org"},
+            "resources": [
+                {"id": "r1", "name": "data.csv", "format": "CSV", "url": "http://example.com/data.csv"}
+            ],
+            "tags": [],
+        }
+    }
+    csv_content = b"col1,col2\n1,2\n3,4"
+
+    with aioresponses() as m:
+        m.get("https://catalog.data.gov/api/3/action/package_show?id=us1", payload=mock_pkg_resp)
+        m.get("http://example.com/data.csv", body=csv_content, content_type="text/csv")
+
+        result = await portal.fetch_dataset_data("us1")
+        assert not result.df.empty
+        assert len(result.df) == 2
+        assert list(result.df.columns) == ["col1", "col2"]
+        assert result.meta["parsed"] is True
+        assert result.meta["title"] == "US CSV Dataset"
+        assert result.meta["parsed_resource"]["format"] == "CSV"
+
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_data_no_parseable_resource():
+    """Testa fetch_dataset_data sem recurso parseável — retorna DataFrame vazio com meta."""
+    portal = PortalDataGovUK()
+
+    mock_pkg_resp = {
+        "success": True,
+        "result": {
+            "id": "uk1",
+            "title": "UK PDF Dataset",
+            "organization": {"title": "UK Org"},
+            "resources": [
+                {"id": "r1", "name": "report.pdf", "format": "PDF", "url": "http://example.com/report.pdf"}
+            ],
+            "tags": [{"name": "reports"}],
+        }
+    }
+
+    with aioresponses() as m:
+        m.get("https://ckan.publishing.service.gov.uk/api/3/action/package_show?id=uk1", payload=mock_pkg_resp)
+
+        result = await portal.fetch_dataset_data("uk1")
+        assert result.df.empty
+        assert result.meta["parsed"] is False
+        assert result.meta["title"] == "UK PDF Dataset"
+        assert len(result.meta["resources"]) == 1
+        assert result.meta["resources"][0]["url"] == "http://example.com/report.pdf"
+
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_data_json_resource():
+    """Testa fetch_dataset_data com recurso JSON."""
+    portal = PortalDataGouvFR()
+
+    mock_pkg_resp = {
+        "id": "fr1",
+        "title": "French JSON Dataset",
+        "description": "Data in JSON",
+        "organization": {"name": "French Org"},
+        "tags": [],
+        "resources": [
+            {"id": "r1", "title": "data.json", "format": "json", "url": "http://example.fr/data.json"}
+        ],
+    }
+    json_content = b'[{"a": 1, "b": 2}, {"a": 3, "b": 4}]'
+
+    with aioresponses() as m:
+        m.get("https://www.data.gouv.fr/", status=200)
+        m.get("https://www.data.gouv.fr/api/1/datasets/fr1/", payload=mock_pkg_resp)
+        m.get("http://example.fr/data.json", body=json_content, content_type="application/json")
+
+        result = await portal.fetch_dataset_data("fr1")
+        assert not result.df.empty
+        assert len(result.df) == 2
+        assert result.meta["parsed"] is True
+
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_data_not_found():
+    """Testa fetch_dataset_data quando dataset não existe."""
+    portal = PortalDataGovUS()
+
+    mock_resp = {"success": False}
+
+    with aioresponses() as m:
+        m.get("https://catalog.data.gov/api/3/action/package_show?id=nonexistent", payload=mock_resp)
+
+        result = await portal.fetch_dataset_data("nonexistent")
+        assert result.df.empty
+        assert result.meta.get("error") == "Dataset not found"
+
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_data_url_extension_fallback():
+    """Testa que fetch_dataset_data detecta formato pela extensão da URL quando format está vazio."""
+    portal = PortalDataGovAU()
+
+    mock_pkg_resp = {
+        "success": True,
+        "result": {
+            "id": "au1",
+            "title": "AU Extensible",
+            "organization": {"title": "AU Org"},
+            "resources": [
+                {"id": "r1", "name": "data", "format": "", "url": "http://example.au/data.csv"}
+            ],
+            "tags": [],
+        }
+    }
+    csv_content = b"x,y\n10,20"
+
+    with aioresponses() as m:
+        m.get("https://data.gov.au/api/3/action/package_show?id=au1", payload=mock_pkg_resp)
+        m.get("http://example.au/data.csv", body=csv_content, content_type="text/csv")
+
+        result = await portal.fetch_dataset_data("au1")
+        assert not result.df.empty
+        assert result.meta["parsed"] is True

@@ -1,6 +1,6 @@
 import pytest
 from aioresponses import aioresponses
-from hipolita import search_data, search_data_async, get_dataset, get_dataset_async, PortalType
+from hipolita import search_data, search_data_async, get_dataset, get_dataset_async, fetch_dataset_data, fetch_dataset_data_async, PortalType
 
 @pytest.mark.asyncio
 async def test_search_all_aggregates_results_async():
@@ -224,3 +224,46 @@ def test_get_dataset_fails_silently():
     """Testa que get_dataset com fails_silently=True retorna None para ALL."""
     result = get_dataset("id", portal="all", fails_silently=True)
     assert result is None
+
+
+# ==========================================
+# Tests for fetch_dataset_data() via core API
+# ==========================================
+
+def test_fetch_dataset_data_core_csv():
+    """Testa fetch_dataset_data via core com recurso CSV."""
+    mock_resp = {
+        "success": True,
+        "result": {
+            "id": "us1",
+            "title": "US Core CSV",
+            "organization": {"title": "Org"},
+            "resources": [
+                {"id": "r1", "name": "data.csv", "format": "CSV", "url": "http://example.com/data.csv"}
+            ],
+            "tags": [],
+        }
+    }
+    csv_content = b"a,b\n1,2"
+
+    with aioresponses() as m:
+        m.get("https://catalog.data.gov/api/3/action/package_show?id=us1", payload=mock_resp)
+        m.get("http://example.com/data.csv", body=csv_content, content_type="text/csv")
+
+        result = fetch_dataset_data("us1", portal="data_gov_us")
+        assert not result.df.empty
+        assert result.meta["parsed"] is True
+        assert result.meta["title"] == "US Core CSV"
+
+
+def test_fetch_dataset_data_all_raises():
+    """Testa que fetch_dataset_data com ALL levanta ValueError."""
+    with pytest.raises(ValueError, match="requires a specific portal"):
+        fetch_dataset_data("id", portal="all")
+
+
+def test_fetch_dataset_data_fails_silently():
+    """Testa que fetch_dataset_data com fails_silently retorna DataFrameWithMeta vazio."""
+    result = fetch_dataset_data("id", portal="all", fails_silently=True)
+    assert result.df.empty
+    assert "error" in result.meta

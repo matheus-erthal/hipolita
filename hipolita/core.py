@@ -2,10 +2,9 @@ def package_name():
     return "Hipólita"
 
 
-import os
 from typing import Optional
 import asyncio
-from .types import PortalType, Dataset
+from .types import PortalType, Dataset, DataFrameWithMeta
 from .data_recovery.portals.portal_dados_abertos_br import DadosAbertosBR
 from .data_recovery.portals.portal_data_gov_us import PortalDataGovUS
 from .data_recovery.portals.portal_data_gov_uk import PortalDataGovUK
@@ -185,6 +184,88 @@ def get_dataset(
     return asyncio.run(get_dataset_async(dataset_id, portal, fails_silently, **auth_config))
 
 
+async def fetch_dataset_data_async(
+    dataset_id: str,
+    portal: PortalType | str,
+    fails_silently: bool = False,
+    **auth_config
+) -> DataFrameWithMeta:
+    """
+    Busca um dataset e tenta baixar o primeiro recurso parseável como DataFrame (assíncrono).
+
+    Se o dataset possuir um recurso em formato parseável (CSV, TSV, XLS, XLSX, JSON),
+    retorna DataFrameWithMeta com o DataFrame preenchido.
+    Caso contrário, retorna DataFrameWithMeta com DataFrame vazio e metadados com links de acesso.
+
+    Args:
+        dataset_id: ID do dataset no portal.
+        portal: PortalType ou string do portal (não aceita 'all').
+        fails_silently: Se True, erros são logados e retorna DataFrameWithMeta vazio.
+        **auth_config: Credenciais extras (ex: api_key para Portal BR).
+    """
+    import pandas as pd
+
+    if isinstance(portal, str):
+        try:
+            portal = PortalType(portal.lower())
+        except ValueError:
+            valid_options = [p.value for p in PortalType if p != PortalType.ALL]
+            msg = f"Invalid portal: '{portal}'. Valid options: {valid_options}"
+            if fails_silently:
+                print(msg)
+                return DataFrameWithMeta(df=pd.DataFrame(), meta={"error": msg})
+            raise ValueError(msg) from None
+
+    if portal == PortalType.ALL:
+        msg = "fetch_dataset_data requires a specific portal. PortalType.ALL is not supported."
+        if fails_silently:
+            print(msg)
+            return DataFrameWithMeta(df=pd.DataFrame(), meta={"error": msg})
+        raise ValueError(msg)
+
+    portal_map = {
+        PortalType.DADOS_GOV_BR: DadosAbertosBR,
+        PortalType.DATA_GOV_US: PortalDataGovUS,
+        PortalType.DATA_GOV_UK: PortalDataGovUK,
+        PortalType.OPENDATA_SWISS: PortalOpendataSwiss,
+        PortalType.AVOINDATA_FI: PortalAvoindataFI,
+        PortalType.DATA_GOV_AU: PortalDataGovAU,
+        PortalType.DATA_GOUV_FR: PortalDataGouvFR,
+        PortalType.DATOS_GOB_ES: PortalDatosGobES,
+        PortalType.DATA_GOV_SG: PortalDataGovSG,
+        PortalType.DATA_GOV_IN: PortalDataGovIN,
+    }
+
+    portal_cls = portal_map.get(portal)
+    if not portal_cls:
+        msg = f"Unsupported portal: {portal}"
+        if fails_silently:
+            print(msg)
+            return DataFrameWithMeta(df=pd.DataFrame(), meta={"error": msg})
+        raise ValueError(msg)
+
+    try:
+        portal_instance = portal_cls(**auth_config)
+        return await portal_instance.fetch_dataset_data(dataset_id)
+    except Exception as e:
+        if not fails_silently:
+            raise
+        print(f"fetch_dataset_data error: {e}")
+        return DataFrameWithMeta(df=pd.DataFrame(), meta={"error": str(e)})
+
+
+def fetch_dataset_data(
+    dataset_id: str,
+    portal: PortalType | str,
+    fails_silently: bool = False,
+    **auth_config
+) -> DataFrameWithMeta:
+    """
+    Busca um dataset e tenta baixar o primeiro recurso parseável como DataFrame (síncrono).
+    """
+    return asyncio.run(fetch_dataset_data_async(dataset_id, portal, fails_silently, **auth_config))
+
+
 class Hipolita:
     """Núcleo da biblioteca Hipolita."""
 
@@ -230,3 +311,23 @@ class Hipolita:
     ) -> Optional[Dataset]:
         """Busca um dataset individual por ID (síncrono)."""
         return get_dataset(dataset_id, portal, fails_silently, **auth_config)
+
+    @staticmethod
+    async def fetch_dataset_data_async(
+        dataset_id: str,
+        portal: PortalType | str,
+        fails_silently: bool = False,
+        **auth_config
+    ) -> DataFrameWithMeta:
+        """Busca dataset e baixa primeiro recurso parseável como DataFrame (assíncrono)."""
+        return await fetch_dataset_data_async(dataset_id, portal, fails_silently, **auth_config)
+
+    @staticmethod
+    def fetch_dataset_data(
+        dataset_id: str,
+        portal: PortalType | str,
+        fails_silently: bool = False,
+        **auth_config
+    ) -> DataFrameWithMeta:
+        """Busca dataset e baixa primeiro recurso parseável como DataFrame (síncrono)."""
+        return fetch_dataset_data(dataset_id, portal, fails_silently, **auth_config)

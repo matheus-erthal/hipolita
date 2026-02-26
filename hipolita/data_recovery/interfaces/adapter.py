@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 import aiohttp
 import pandas as pd
-from ...types import Dataset, DataFrameWithMeta
+from ...types import Dataset
 
 class DataAdapter(ABC):
     """
