@@ -1,6 +1,6 @@
 import pytest
 from aioresponses import aioresponses
-from hipolita import search_data, search_data_async, PortalType
+from hipolita import search_data, search_data_async, get_dataset, get_dataset_async, PortalType
 
 @pytest.mark.asyncio
 async def test_search_all_aggregates_results_async():
@@ -99,4 +99,128 @@ def test_search_fails_silently_off():
         search_data("educação", portal="dados_gov_br", fails_silently=False)
 
 
+def test_search_by_string_key_uk():
+    """Testa busca no portal UK por string key."""
+    mock_uk_resp = {
+        "success": True,
+        "result": {"results": [{"id": "uk1", "title": "UK Dataset", "organization": {"title": "UK Org"}}]}
+    }
+    with aioresponses() as m:
+        m.get("https://ckan.publishing.service.gov.uk/api/3/action/package_search?rows=0", status=200)
+        m.get("https://ckan.publishing.service.gov.uk/api/3/action/package_search?q=test&rows=10", payload=mock_uk_resp)
 
+        results = search_data("test", portal="data_gov_uk")
+        assert len(results) == 1
+        assert results[0].title == "UK Dataset"
+        assert results[0].source_portal == "data.gov.uk"
+
+
+def test_search_by_string_key_france():
+    """Testa busca no portal França por string key."""
+    mock_fr_resp = {
+        "data": [{"id": "fr1", "title": "French Dataset", "resources": [], "tags": []}]
+    }
+    with aioresponses() as m:
+        m.get("https://www.data.gouv.fr/", status=200)
+        m.get("https://www.data.gouv.fr/api/1/datasets/?page_size=10&q=test", payload=mock_fr_resp)
+
+        results = search_data("test", portal="data_gouv_fr")
+        assert len(results) == 1
+        assert results[0].title == "French Dataset"
+        assert results[0].source_portal == "data.gouv.fr"
+
+
+def test_search_by_string_key_singapore():
+    """Testa busca no portal Singapura por string key."""
+    mock_sg_resp = {
+        "code": 0,
+        "data": {"datasets": [{"datasetId": "sg1", "name": "SG Dataset", "managedByAgencyName": "SG Agency"}]}
+    }
+    with aioresponses() as m:
+        m.get("https://api-production.data.gov.sg/", status=200)
+        m.get("https://api-production.data.gov.sg/v2/public/api/datasets?page=1&query=test", payload=mock_sg_resp)
+
+        results = search_data("test", portal="data_gov_sg")
+        assert len(results) == 1
+        assert results[0].title == "SG Dataset"
+        assert results[0].source_portal == "data.gov.sg"
+
+
+# ==========================================
+# Tests for get_dataset() via core API
+# ==========================================
+
+def test_get_dataset_core_us():
+    """Testa get_dataset via core para portal US."""
+    mock_resp = {
+        "success": True,
+        "result": {
+            "id": "us1",
+            "title": "US Dataset Detail",
+            "organization": {"title": "US Org"},
+            "resources": [],
+            "tags": [],
+        }
+    }
+    with aioresponses() as m:
+        m.get("https://catalog.data.gov/api/3/action/package_show?id=us1", payload=mock_resp)
+        ds = get_dataset("us1", portal="data_gov_us")
+        assert ds is not None
+        assert ds.title == "US Dataset Detail"
+
+
+def test_get_dataset_core_france():
+    """Testa get_dataset via core para portal França."""
+    mock_resp = {
+        "id": "fr1",
+        "title": "French Detail",
+        "description": "FR desc",
+        "organization": {"name": "French Org"},
+        "tags": [],
+        "resources": [],
+    }
+    with aioresponses() as m:
+        m.get("https://www.data.gouv.fr/", status=200)
+        m.get("https://www.data.gouv.fr/api/1/datasets/fr1/", payload=mock_resp)
+        ds = get_dataset("fr1", portal="data_gouv_fr")
+        assert ds is not None
+        assert ds.title == "French Detail"
+        assert ds.source_portal == "data.gouv.fr"
+
+
+@pytest.mark.asyncio
+async def test_get_dataset_async_singapore():
+    """Testa get_dataset_async via core para portal Singapura."""
+    mock_resp = {
+        "code": 0,
+        "data": {
+            "datasetId": "d_sg1",
+            "name": "SG Detail",
+            "format": "CSV",
+            "managedBy": "SG Agency",
+        }
+    }
+    with aioresponses() as m:
+        m.get("https://api-production.data.gov.sg/", status=200)
+        m.get("https://api-production.data.gov.sg/v2/public/api/datasets/d_sg1/metadata", payload=mock_resp)
+        ds = await get_dataset_async("d_sg1", portal="data_gov_sg")
+        assert ds is not None
+        assert ds.title == "SG Detail"
+
+
+def test_get_dataset_all_raises():
+    """Testa que get_dataset com ALL levanta ValueError."""
+    with pytest.raises(ValueError, match="requires a specific portal"):
+        get_dataset("id", portal="all")
+
+
+def test_get_dataset_invalid_portal():
+    """Testa que get_dataset com portal inválido levanta ValueError."""
+    with pytest.raises(ValueError, match="Invalid portal"):
+        get_dataset("id", portal="portal_inexistente")
+
+
+def test_get_dataset_fails_silently():
+    """Testa que get_dataset com fails_silently=True retorna None para ALL."""
+    result = get_dataset("id", portal="all", fails_silently=True)
+    assert result is None

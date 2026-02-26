@@ -57,6 +57,20 @@ class DadosAbertosBR(Portal):
         return results
 
     async def get_dataset(self, dataset_id: str) -> Optional[Dataset]:
+        if not self.api_key:
+            raise ValueError("The Dados Abertos BR portal requires an 'api_key' for fetching a dataset.")
+
+        async with self.adapter as ad:
+            if not await ad.connect():
+                pass
+
+            url = f"{self.adapter.base_url}{self.BASE_API_PATH}/{dataset_id}"
+            headers = {"chave-api-dados-abertos": self.api_key}
+
+            data = await ad.get(url, headers=headers)
+
+            if data and isinstance(data, dict):
+                return self._map_package_to_dataset(data)
         return None
 
     def _map_package_to_dataset(self, pkg: dict) -> Dataset:
