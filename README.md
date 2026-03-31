@@ -1,4 +1,4 @@
-# Hipólita
+# HLib
 
 [![Build](https://github.com/matheus-erthal/hipolita/actions/workflows/python-package.yml/badge.svg)](https://github.com/matheus-erthal/hipolita/actions/workflows/python-package.yml)
 [![PyPI](https://img.shields.io/pypi/v/hipolita?color=blue)](https://pypi.org/project/hipolita/)
