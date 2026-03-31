@@ -6,7 +6,7 @@
 
 ## Descrição
 
-Implementação do framework **Hipólita**, proposto originalmente em [_Hippolyta: a framework to enhance open data interpretability and empower citizens_](https://dl.acm.org/doi/10.1145/3598469.3598559).
+Implementação do framework **Hipólita**, proposto originalmente em Editado para Revisão double Blind.
 
 Hlib facilita o acesso e a interpretação de dados governamentais abertos, fornecendo uma interface unificada para buscar, recuperar e consumir datasets de múltiplos portais nacionais — cada um com APIs, padrões de metadados e formatos de resposta diferentes.
 
